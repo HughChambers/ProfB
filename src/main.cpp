@@ -7,15 +7,14 @@
 
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
-#define SWITCH_1 7
-#define SWITCH_2 8
-#define SWITCH_4 9
-#define SWITCH_8 10
+#define BUTTON 7
 
 // put function declarations here:
 void General_Init();
 void Baro_Init();
+void Servo_Init();
 int EEPROM_Init();
+int Altitude_Select();
 
 // Objects
 Servo ReleaseServo;
@@ -32,10 +31,21 @@ void setup() {
   
   If initialisation occurs without any problems, then proceed into the main loop
   */
+
+  General_Init();
+  Servo_Init();
+  Baro_Init();
+  EEPROM_Init();
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+
+  //Statemachine();
+
+
 }
 
 // put function definitions here:
@@ -48,10 +58,7 @@ void General_Init(){
   Serial.begin(9600);
 
   // Configure I/O pins
-  pinMode(SWITCH_1, INPUT_PULLUP);
-  pinMode(SWITCH_2, INPUT_PULLUP);
-  pinMode(SWITCH_4, INPUT_PULLUP);
-  pinMode(SWITCH_8, INPUT_PULLUP);
+  pinMode(BUTTON, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
 }
 
@@ -68,13 +75,34 @@ void Baro_Init(){
 }
 
 int EEPROM_Init(){
-for (int i = 0; i < EEPROM.length(); i++) {
+for (uint16_t i = 0; i < EEPROM.length(); i++) {
     // this performs as EEPROM.write(i, i)
     if(EEPROM.read(i) == 255){
       return i;
     }
-    else
-    return 0;
+  }
+  return 0;
+}
+
+
+
+
+int Altitude_Select(){
+  int Altitude = 0;
+  int timeout = 0;
+  int entertime = millis();
+
+  while(timeout < 5000 ){
+    timeout = millis() - entertime;
+  if(digitalRead(BUTTON)){
+    Altitude = Altitude + 100;
+    if(Altitude > 1400){
+      Altitude = 0;
+    }
+    timeout = 0;
+    }
+  }
+  return Altitude;
 }
 
 
@@ -102,4 +130,9 @@ initialise eeprom
 
 
 
+-----------------------VOID_LOOP------------------------------
+
+___________________________Configuration State______________________
+
+// 
 */
