@@ -18,6 +18,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  //run state machine here 
 }
 
 // put function definitions here:
