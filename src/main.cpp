@@ -15,6 +15,7 @@ void Baro_Init();
 void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
+void Buzz_Num(int num);
 
 // Objects
 Servo ReleaseServo;
@@ -84,8 +85,13 @@ for (uint16_t i = 0; i < EEPROM.length(); i++) {
   return 0;
 }
 
+void Buzz_Num(int num){
+for (int i; i < num; i++){
+    tone(BUZZER_PIN, 2000, 300);
+    delay(300);
+  }
 
-
+}
 
 int Altitude_Select(){
   int Altitude = 0;
@@ -95,11 +101,13 @@ int Altitude_Select(){
   while(timeout < 5000 ){
     timeout = millis() - entertime;
   if(digitalRead(BUTTON)){
+    timeout = 0;
+    entertime = millis();
     Altitude = Altitude + 100;
     if(Altitude > 1400){
       Altitude = 0;
     }
-    timeout = 0;
+    
     }
   }
   return Altitude;
@@ -132,7 +140,14 @@ initialise eeprom
 
 -----------------------VOID_LOOP------------------------------
 
-___________________________Configuration State______________________
+__________________________Altitude select_______________________
+reads altitude from button presses
+beeps out the altitude select
 
-// 
+___________________________Buzzer function______________________
+beeps out a number
+
+
+
+
 */
