@@ -10,7 +10,6 @@
 #define BUZZER_PIN 6
 #define BUTTON 7
 
-
 float groundPressure;
 int CurrentAddress = 0;
 int address = 0;
@@ -22,11 +21,9 @@ unsigned long PreviousTime = 0;
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
-
 Servo ReleaseServo;
 
 // State Enum
-
 enum State
 {
   RETRIEVE_DATA = 0,
@@ -39,14 +36,13 @@ enum State
   TOUCHDOWN
 };
 
-
-
 // put function declarations here:
 void General_Init();
 void baromSetup();
 void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
+void printAPOGEE(int CurrentAddress);
 void Buzz_Num(int num);
 void StateMachine();
 float RAW_ALTITUDE();
