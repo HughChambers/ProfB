@@ -47,6 +47,7 @@ void Buzz_Num(int num);
 void StateMachine();
 float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
+void readFlights();
 
 void setup()
 {
@@ -212,6 +213,13 @@ void Buzz_Num(int num)
         //Serial.println("buzz");
         delay(300);
       }
+  }
+}
+
+void readFlights(){
+  for(int i = 0; i < CurrentAddress; i++){
+    Buzz_Num(EEPROM.read(i));
+    delay(5000);
   }
 }
 
