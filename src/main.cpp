@@ -3,11 +3,28 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include "bmp_i2c.h"
-#include <Servo.h> 
+#include <Servo.h>
 
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
 #define BUTTON 7
+
+enum State
+{
+  RETRIEVE_DATA = 0,
+  CONFIGURATION,
+  IDLE,
+  ASCENDING,
+  APOGEE,
+  DESCENDING,
+  RELEASE,
+  TOUCHDOWN
+};
+
+int state = 0;
+unsigned long LastDebounce = 0;
+unsigned long CurrentTime = 0;
+unsigned long PreviousTime = 0;
 
 // put function declarations here:
 void General_Init();
@@ -16,44 +33,49 @@ void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
 void Buzz_Num(int num);
+void StateMachine();
 
 // Objects
 Servo ReleaseServo;
-BMP3_I2C bmp(0x76);
-struct bmp_data sensorData;
 
-void setup() {
+// State Enum
+
+void setup()
+{
   // put your setup code here, to run once:
   /*
   Run all of the initialisation functions
   If one of the functions fails to initialise,
   flag it and beep out an error code at the end of setup.
   Re-run setup until we pass initialisation without any errors
-  
+
   If initialisation occurs without any problems, then proceed into the main loop
   */
 
+  // Disable sensor initialistaiton for testing
   General_Init();
-  Servo_Init();
-  Baro_Init();
-  EEPROM_Init();
 
+  // Servo_Init();
+  // Baro_Init();
+  // EEPROM_Init();
+  // delay(2000);
+  Serial.println("Init complete");
+  delay(2000);
 }
 
-void loop() {
+void loop()
+{
   // put your main code here, to run repeatedly:
 
-
-  //Statemachine();
-
-
+  StateMachine();
+  // Serial.println("Init complete");
+  // delay(100);
 }
 
 // put function definitions here:
 
-
-
-void General_Init(){
+void General_Init()
+{
 
   // Start UART comms
   Serial.begin(9600);
@@ -63,57 +85,112 @@ void General_Init(){
   pinMode(BUZZER_PIN, OUTPUT);
 }
 
-void Servo_Init(){
+void Servo_Init()
+{
   ReleaseServo.attach(SERVO_PIN);
 }
 
-void Baro_Init(){
+void Baro_Init()
+{
   // Start baro operations
-  bmp.init();
-
-  // set sensor in forced mode with desired settings
-  bmp.setSensorInForcedMode(BMP3_OVERSAMPLING_16X, BMP3_OVERSAMPLING_2X, BMP3_IIR_FILTER_COEFF_3);
 }
 
-int EEPROM_Init(){
-for (uint16_t i = 0; i < EEPROM.length(); i++) {
+int EEPROM_Init()
+{
+  for (uint16_t i = 0; i < EEPROM.length(); i++)
+  {
     // this performs as EEPROM.write(i, i)
-    if(EEPROM.read(i) == 255){
+    if (EEPROM.read(i) == 255)
+    {
       return i;
     }
   }
   return 0;
 }
 
-void Buzz_Num(int num){
-for (int i; i < num; i++){
-    tone(BUZZER_PIN, 2000, 300);
-    delay(300);
-  }
+void StateMachine()
+{
+  switch (state)
+  {
+  case RETRIEVE_DATA:
+    Serial.println("I am retrieving saved data");
+    delay(1000);
+    state = 1;
+    break;
+  case CONFIGURATION:
+    Buzz_Num(Altitude_Select());
 
+    break;
+  case IDLE:
+    break;
+  case ASCENDING:
+    break;
+  case APOGEE:
+    break;
+  case DESCENDING:
+    break;
+  case RELEASE:
+    break;
+  case TOUCHDOWN:
+    break;
+
+  default:
+    break;
+  }
 }
 
-int Altitude_Select(){
-  int Altitude = 0;
-  int timeout = 0;
-  int entertime = millis();
+void Buzz_Num(int num)
+{
+  {
+    Serial.println(num);
+    if (num > 0)
+      for (int i = 0; i < num; i++)
+      {
+        tone(BUZZER_PIN, 2000, 75);
+        Serial.println("buzz");
+        delay(300);
+      }
+  }
+}
 
-  while(timeout < 5000 ){
+int Altitude_Select()
+{
+  int Altitude = 0;
+  unsigned long timeout = 0;
+
+  unsigned long entertime = millis();
+  // Serial.println("test 1");
+
+  while (timeout < 5000)
+  {
     timeout = millis() - entertime;
-  if(digitalRead(BUTTON)){
-    timeout = 0;
-    entertime = millis();
-    Altitude = Altitude + 100;
-    if(Altitude > 1400){
-      Altitude = 0;
-    }
-    
+    // Serial.println("debug 1");
+
+    if (!digitalRead(BUTTON))
+    {
+      unsigned long DebounceDelay = 400;
+      if (millis() - LastDebounce > DebounceDelay)
+      {
+        Serial.println("debug 2");
+        timeout = 0;
+        entertime = millis();
+        Altitude = Altitude + 1;
+        Serial.println(Altitude);
+        LastDebounce = millis();
+        Serial.print("Millis: ");
+        Serial.println(millis());
+        Serial.print("Last debounce: ");
+        Serial.println(LastDebounce);
+        tone(BUZZER_PIN, 2000, 50);
+      }
     }
   }
+
+  if (Altitude > 1400)
+    Altitude = 0;
+
   return Altitude;
 }
-
-
 
 /*
 -----------------------FUNCTION PLAN-------------------------------
