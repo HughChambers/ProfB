@@ -8,6 +8,7 @@
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
 float groundPressure;
+int CurrentAddress = 0;
 int address = 0;
 
 // put function declarations here:
@@ -90,8 +91,8 @@ int myFunction(int x, int y) {
 //Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
 //Barometer initialisation //Kalman filter ---> save
 
-
-void printAPOGEE()
+//Tell functon where data goes
+void printAPOGEE(int CurrentAddress)
 {
       float lastAltitude = KALMAN_ALTITUDE();
       float Filtered_altitude = KALMAN_ALTITUDE();
@@ -100,46 +101,12 @@ void printAPOGEE()
         {
             Serial.println("APOGEE");
             apogeeReached = true;
+            EEPROM.put(CurrentAddress,Filtered_altitude);
         }
         lastAltitude = Filtered_altitude;
       Serial.println(Filtered_altitude);
-      EEPROM.put(address,Filtered_altitude);
     }
  
-
-
-
-
-
-
-void EEPROM_READ()
-{
-  double time = 0.0;
-  float altitude = 0.00f;
-
-  if (address < (1024 - buffer))
-  {
-    Serial.print(EEPROM.get(address, time));
-    Serial.print(EEPROM.get(address + 4, altitude));;
-    address = address + buffer;
-  }
-  else
-    address = 0;
-
-
-  //**The pseudo code shown below gives a non blocking delay of 500ms and this delay is repeatedly
-  // triggered. This shows you how to create an Arduino millis timer that can have a delay time of any length
-  // up to 49.7 days
-
-  float oldtime = 0;
-  float newtime = millis();
-
-  if ((newtime - oldtime > 500))
-  {
-    // do something after every 500ms
-    oldtime = newtime;
-  }
-}
 
 
 /*
