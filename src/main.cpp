@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <SPI.h>
 #include <EEPROM.h>
-#include "bmp_i2c.h"
 #include <Servo.h>
 
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
 #define BUTTON 7
+
+// State Enum
 
 enum State
 {
@@ -22,6 +22,8 @@ enum State
 };
 
 int state = 0;
+
+int ReleaseAltitude = 0;
 unsigned long LastDebounce = 0;
 unsigned long CurrentTime = 0;
 unsigned long PreviousTime = 0;
@@ -38,7 +40,7 @@ void StateMachine();
 // Objects
 Servo ReleaseServo;
 
-// State Enum
+
 
 void setup()
 {
@@ -113,15 +115,26 @@ void StateMachine()
   switch (state)
   {
   case RETRIEVE_DATA:
-    Serial.println("I am retrieving saved data");
-    delay(1000);
+    Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
+
+    // Insert function here to retrieve data from EEPROM
+    delay(2000);
     state = 1;
     break;
+
+
   case CONFIGURATION:
-    Buzz_Num(Altitude_Select());
+
+    Serial.println("I will now set the Release altitude");
+    ReleaseAltitude = Altitude_Select();
+    Serial.print("The release altitude has been set to: ");
+    Serial.println(ReleaseAltitude);
+    state = 2;
 
     break;
   case IDLE:
+  Serial.println("I am now in IDLE");
+  delay(2000);
     break;
   case ASCENDING:
     break;
@@ -147,7 +160,7 @@ void Buzz_Num(int num)
       for (int i = 0; i < num; i++)
       {
         tone(BUZZER_PIN, 2000, 75);
-        Serial.println("buzz");
+        //Serial.println("buzz");
         delay(300);
       }
   }
@@ -171,16 +184,16 @@ int Altitude_Select()
       unsigned long DebounceDelay = 400;
       if (millis() - LastDebounce > DebounceDelay)
       {
-        Serial.println("debug 2");
+       // Serial.println("debug 2");
         timeout = 0;
         entertime = millis();
         Altitude = Altitude + 1;
-        Serial.println(Altitude);
+        //Serial.println(Altitude);
         LastDebounce = millis();
-        Serial.print("Millis: ");
-        Serial.println(millis());
-        Serial.print("Last debounce: ");
-        Serial.println(LastDebounce);
+        //Serial.print("Millis: ");
+        //Serial.println(millis());
+       // Serial.print("Last debounce: ");
+        //Serial.println(LastDebounce);
         tone(BUZZER_PIN, 2000, 50);
       }
     }
@@ -188,7 +201,7 @@ int Altitude_Select()
 
   if (Altitude > 1400)
     Altitude = 0;
-
+  Buzz_Num(Altitude);
   return Altitude;
 }
 
