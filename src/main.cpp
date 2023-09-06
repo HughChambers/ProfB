@@ -1,7 +1,67 @@
 #include <Arduino.h>
+#include <EEPROM.h>
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
+#include <SimpleKalmanFilter.h>
+
+#define buffer 16
+SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
+Adafruit_BMP280 bmp; // I2C
+float groundPressure;
+int address = 0;
 
 // put function declarations here:
 int myFunction(int, int);
+
+void baromSetup()
+{
+   //Serial.begin(9600);
+  while (!Serial)
+  delay(100); // wait for native usb
+  Serial.println(F("BMP280 test"));
+  unsigned status;
+  // Serial.println("test");
+  status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
+
+  // status = bmp.begin(0x76);
+  if (!status)
+  {
+    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                     "try a different address!"));
+    Serial.print("SensorID was: 0x");
+    Serial.println(bmp.sensorID(), 16);
+    Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
+    Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
+    Serial.print("        ID of 0x60 represents a BME 280.\n");
+    Serial.print("        ID of 0x61 represents a BME 680.\n");
+    while (1)
+      delay(10);
+  }
+
+  /* Default settings from datasheet. */
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+  groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
+}
+
+float RAW_ALTITUDE()
+{
+  /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
+
+  float altitude = bmp.readAltitude(groundPressure);
+
+  return altitude;
+}
+
+float KALMAN_ALTITUDE()
+{
+  float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
+  return estimated_altitude;
+}
 
 void setup() {
   // put your setup code here, to run once:
@@ -27,6 +87,59 @@ int myFunction(int x, int y) {
 }
 
 
+//Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
+//Barometer initialisation //Kalman filter ---> save
+
+
+void printAPOGEE()
+{
+      float lastAltitude = KALMAN_ALTITUDE();
+      float Filtered_altitude = KALMAN_ALTITUDE();
+      bool apogeeReached = false;
+      if ((Filtered_altitude < lastAltitude) and (apogeeReached == false))
+        {
+            Serial.println("APOGEE");
+            apogeeReached = true;
+        }
+        lastAltitude = Filtered_altitude;
+      Serial.println(Filtered_altitude);
+      EEPROM.put(address,Filtered_altitude);
+    }
+ 
+
+
+
+
+
+
+void EEPROM_READ()
+{
+  double time = 0.0;
+  float altitude = 0.00f;
+
+  if (address < (1024 - buffer))
+  {
+    Serial.print(EEPROM.get(address, time));
+    Serial.print(EEPROM.get(address + 4, altitude));;
+    address = address + buffer;
+  }
+  else
+    address = 0;
+
+
+  //**The pseudo code shown below gives a non blocking delay of 500ms and this delay is repeatedly
+  // triggered. This shows you how to create an Arduino millis timer that can have a delay time of any length
+  // up to 49.7 days
+
+  float oldtime = 0;
+  float newtime = millis();
+
+  if ((newtime - oldtime > 500))
+  {
+    // do something after every 500ms
+    oldtime = newtime;
+  }
+}
 
 
 /*
