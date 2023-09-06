@@ -15,9 +15,12 @@ int CurrentAddress = 0;
 int address = 0;
 int state = 0;
 int ReleaseAltitude = 0;
+
+// Timer variables
 unsigned long LastDebounce = 0;
 unsigned long CurrentTime = 0;
 unsigned long PreviousTime = 0;
+
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
@@ -192,8 +195,12 @@ void StateMachine()
   delay(2000);
     break;
   case ASCENDING:
+
+  
+  
     break;
   case APOGEE:
+  
     break;
   case DESCENDING:
     break;
