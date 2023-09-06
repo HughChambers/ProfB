@@ -65,6 +65,11 @@ void setup()
 
   Serial.println("Init complete");
   delay(2000);
+
+  EEPROM.write(0, 5);
+  EEPROM.write(1, 2);
+  EEPROM.write(2, 7);
+  CurrentAddress = 3;
 }
 
 void loop()
@@ -167,7 +172,7 @@ void StateMachine()
   {
   case RETRIEVE_DATA:
     Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
-
+    readFlights();
     // Insert function here to retrieve data from EEPROM
     delay(2000);
     state = 1;
