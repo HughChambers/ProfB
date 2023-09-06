@@ -64,15 +64,25 @@ void setup()
   If initialisation occurs without any problems, then proceed into the main loop
   */
 
-  General_Init();
 
-  Serial.println("Init complete");
-  delay(2000);
-
+// Debug
   EEPROM.write(0, 5);
   EEPROM.write(1, 2);
   EEPROM.write(2, 7);
   CurrentAddress = 3;
+
+  General_Init();
+  //baromSetup();
+  Servo_Init();
+  CurrentAddress = EEPROM_Init();
+  Serial.print("There are ");
+  Serial.print(CurrentAddress);
+  Serial.println(" flight(s) stored");
+  delay(5000);
+  Serial.println("Init complete");
+  delay(5000);
+
+
 }
 
 void loop()
@@ -175,6 +185,7 @@ void StateMachine()
   {
   case RETRIEVE_DATA:
     Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
+    
     readFlights();
     // Insert function here to retrieve data from EEPROM
     delay(2000);
@@ -230,6 +241,9 @@ void Buzz_Num(int num)
 
 void readFlights(){
   for(int i = 0; i < CurrentAddress; i++){
+    Serial.print("Apogee ");
+    Serial.print(i);
+    Serial.print(": ");
     Buzz_Num(EEPROM.read(i));
     delay(5000);
   }
