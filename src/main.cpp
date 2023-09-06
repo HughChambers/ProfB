@@ -3,20 +3,27 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
-
-#define buffer 16
-SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
-Adafruit_BMP280 bmp; // I2C
-float groundPressure;
-int CurrentAddress = 0;
-int address = 0;
-#include <Wire.h>
-#include <EEPROM.h>
 #include <Servo.h>
 
+#define buffer 16
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
 #define BUTTON 7
+
+
+float groundPressure;
+int CurrentAddress = 0;
+int address = 0;
+int state = 0;
+int ReleaseAltitude = 0;
+unsigned long LastDebounce = 0;
+unsigned long CurrentTime = 0;
+unsigned long PreviousTime = 0;
+
+SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
+Adafruit_BMP280 bmp; // I2C
+
+Servo ReleaseServo;
 
 // State Enum
 
@@ -32,21 +39,63 @@ enum State
   TOUCHDOWN
 };
 
-int state = 0;
 
-int ReleaseAltitude = 0;
-unsigned long LastDebounce = 0;
-unsigned long CurrentTime = 0;
-unsigned long PreviousTime = 0;
 
 // put function declarations here:
 void General_Init();
-void Baro_Init();
+void baromSetup();
 void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
 void Buzz_Num(int num);
 void StateMachine();
+float RAW_ALTITUDE();
+float KALMAN_ALTITUDE();
+
+void setup()
+{
+  // put your setup code here, to run once:
+  /*
+  Run all of the initialisation functions
+  If one of the functions fails to initialise,
+  flag it and beep out an error code at the end of setup.
+  Re-run setup until we pass initialisation without any errors
+
+  If initialisation occurs without any problems, then proceed into the main loop
+  */
+
+  General_Init();
+
+  Serial.println("Init complete");
+  delay(2000);
+}
+
+void loop()
+{
+  // put your main code here, to run repeatedly:
+  //run state machine here 
+
+  StateMachine();
+
+}
+
+// put function definitions here:
+
+void General_Init()
+{
+
+  // Start UART comms
+  Serial.begin(9600);
+
+  // Configure I/O pins
+  pinMode(BUTTON, INPUT_PULLUP);
+  pinMode(BUZZER_PIN, OUTPUT);
+}
+
+void Servo_Init()
+{
+  ReleaseServo.attach(SERVO_PIN);
+}
 
 void baromSetup()
 {
@@ -83,81 +132,6 @@ void baromSetup()
   groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
 }
 
-float RAW_ALTITUDE()
-{
-  /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
-
-  float altitude = bmp.readAltitude(groundPressure);
-
-  return altitude;
-}
-
-float KALMAN_ALTITUDE()
-{
-  float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
-  return estimated_altitude;
-}
-
-
-
-
-
-void setup()
-{
-  // put your setup code here, to run once:
-  /*
-  Run all of the initialisation functions
-  If one of the functions fails to initialise,
-  flag it and beep out an error code at the end of setup.
-  Re-run setup until we pass initialisation without any errors
-
-  If initialisation occurs without any problems, then proceed into the main loop
-  */
-
-  // Disable sensor initialistaiton for testing
-  General_Init();
-
-  // Servo_Init();
-  // Baro_Init();
-  // EEPROM_Init();
-  // delay(2000);
-  Serial.println("Init complete");
-  delay(2000);
-}
-
-void loop()
-{
-  // put your main code here, to run repeatedly:
-  //run state machine here 
-
-  StateMachine();
-  // Serial.println("Init complete");
-  // delay(100);
-}
-
-// put function definitions here:
-
-void General_Init()
-{
-
-  // Start UART comms
-  Serial.begin(9600);
-
-  // Configure I/O pins
-  pinMode(BUTTON, INPUT_PULLUP);
-  pinMode(BUZZER_PIN, OUTPUT);
-}
-
-void Servo_Init()
-{
-  ReleaseServo.attach(SERVO_PIN);
-}
-
-void Baro_Init()
-{
-  // Start baro operations
-}
-
 int EEPROM_Init()
 {
   for (uint16_t i = 0; i < EEPROM.length(); i++)
@@ -170,18 +144,6 @@ int EEPROM_Init()
   }
   return 0;
 }
-
-void StateMachine()
-{
-  switch (state)
-  {
-  case RETRIEVE_DATA:
-    Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
-
-    // Insert function here to retrieve data from EEPROM
-    delay(2000);
-    state = 1;
-    break;
 
 //Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
 //Barometer initialisation //Kalman filter ---> save
@@ -202,6 +164,17 @@ void printAPOGEE(int CurrentAddress)
       Serial.println(Filtered_altitude);
     }
  
+void StateMachine()
+{
+  switch (state)
+  {
+  case RETRIEVE_DATA:
+    Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
+
+    // Insert function here to retrieve data from EEPROM
+    delay(2000);
+    state = 1;
+    break;
 
   case CONFIGURATION:
 
@@ -283,6 +256,21 @@ int Altitude_Select()
     Altitude = 0;
   Buzz_Num(Altitude);
   return Altitude;
+}
+
+float RAW_ALTITUDE()
+{
+  /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
+
+  float altitude = bmp.readAltitude(groundPressure);
+
+  return altitude;
+}
+
+float KALMAN_ALTITUDE()
+{
+  float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
+  return estimated_altitude;
 }
 
 /*
