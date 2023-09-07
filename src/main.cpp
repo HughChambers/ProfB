@@ -47,6 +47,8 @@ int EEPROM_Init();
 int Altitude_Select();
 void printAPOGEE(int CurrentAddress);
 void Buzz_Num(int num);
+void Buzz_Setup_Pass();
+void Buzz_User_Enter();
 void StateMachine();
 float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
@@ -74,12 +76,17 @@ void setup()
   General_Init();
   //baromSetup();
   Servo_Init();
+  delay(2000);
+
+Serial.println("Init complete");
+Buzz_Setup_Pass();
+
   CurrentAddress = EEPROM_Init();
   Serial.print("There are ");
   Serial.print(CurrentAddress);
   Serial.println(" flight(s) stored");
   delay(5000);
-  Serial.println("Init complete");
+  
   delay(5000);
 
 
@@ -195,6 +202,7 @@ void StateMachine()
   case CONFIGURATION:
 
     Serial.println("I will now set the Release altitude");
+    Buzz_User_Enter();
     ReleaseAltitude = Altitude_Select();
     Serial.print("The release altitude has been set to: ");
     Serial.println(ReleaseAltitude);
@@ -303,6 +311,23 @@ float KALMAN_ALTITUDE()
   return estimated_altitude;
 }
 
+void Buzz_Setup_Pass(){
+  tone(BUZZER_PIN, 750,500);
+  delay(500);
+  tone(BUZZER_PIN, 1000,500);
+  delay(500);
+  tone(BUZZER_PIN, 1250,500);
+  delay(500);
+}
+
+void Buzz_User_Enter(){
+  tone(BUZZER_PIN, 750, 500);
+  delay(500);
+  tone(BUZZER_PIN, 750, 500);
+  delay(500);
+  tone(BUZZER_PIN, 750, 500);
+  delay(500);
+}
 /*
 -----------------------FUNCTION PLAN-------------------------------
 
