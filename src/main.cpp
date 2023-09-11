@@ -9,6 +9,7 @@
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
 #define BUTTON 7
+#define STATE_CHANGE 5
 
 float groundPressure;
 int CurrentAddress = 0;
@@ -140,12 +141,12 @@ int EEPROM_Init()
   }
   return 0;
 }
-
+//DetectApogee instead of PrintApogee
 //Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
 //Barometer initialisation //Kalman filter ---> save
 
 //Tell functon where data goes
-void printAPOGEE(int CurrentAddress)
+void APOGEE_DETECTION()
 {
       float lastAltitude = KALMAN_ALTITUDE();
       float Filtered_altitude = KALMAN_ALTITUDE();
@@ -154,11 +155,27 @@ void printAPOGEE(int CurrentAddress)
         {
             Serial.println("APOGEE");
             apogeeReached = true;
-            EEPROM.put(CurrentAddress,Filtered_altitude);
         }
         lastAltitude = Filtered_altitude;
       Serial.println(Filtered_altitude);
     }
+  
+  void PRINT_APOGEE(int CurrentAddress)
+  {
+      float lastAltitude_EEPROM = KALMAN_ALTITUDE();
+      float Filtered_altitude_EEPROM = KALMAN_ALTITUDE();
+      bool apogeeReached = false;
+      if ((Filtered_altitude_EEPROM < lastAltitude_EEPROM) and (apogeeReached == false))
+        {
+            apogeeReached = true;
+            EEPROM.put(CurrentAddress,Filtered_altitude_EEPROM);
+        }
+  }
+  
+
+void buzzer_idle(){ //Put the saved EEPROM into APOGEE //Serial.print(Apogee)
+
+}
  
 void StateMachine()
 {
@@ -182,12 +199,30 @@ void StateMachine()
 
     break;
   case IDLE:
+  {
+    // while altitude is less than logging threshold, do nothing
+    while (KALMAN_ALTITUDE() < STATE_CHANGE)
+    {
+      buzzer_idle();
+    };
+  }
+  //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
   Serial.println("I am now in IDLE");
   delay(2000);
     break;
+  //Print APOGEE
   case ASCENDING:
+  while (KALMAN_ALTITUDE() > STATE_CHANGE)
+  {
+    APOGEE_DETECTION();
+  }
     break;
+  //Save to EEPROM
   case APOGEE:
+  {
+    printAPOGEE(CurrentAddress);
+    //APOGEE Buzzer? buzzer_APOGEE
+  }
     break;
   case DESCENDING:
     break;
@@ -268,6 +303,9 @@ float KALMAN_ALTITUDE()
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
   return estimated_altitude;
 }
+
+
+//* no where all the prevous flights are
 
 /*
 -----------------------FUNCTION PLAN-------------------------------
