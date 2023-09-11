@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
-#include <Servo.h>
+//#include <Servo.h>
 
 #define buffer 16
 #define SERVO_PIN 5
@@ -24,7 +24,7 @@ unsigned long PreviousTime = 0;
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
-Servo ReleaseServo;
+//Servo ReleaseServo;
 
 // State Enum
 enum State
@@ -86,10 +86,6 @@ Buzz_Setup_Pass();
   Serial.print(CurrentAddress);
   Serial.println(" flight(s) stored");
   delay(5000);
-  
-  delay(5000);
-
-
 }
 
 void loop()
@@ -116,7 +112,7 @@ void General_Init()
 
 void Servo_Init()
 {
-  ReleaseServo.attach(SERVO_PIN);
+  //ReleaseServo.attach(SERVO_PIN);
 }
 
 void baromSetup()
@@ -205,7 +201,9 @@ void StateMachine()
     Buzz_User_Enter();
     ReleaseAltitude = Altitude_Select();
     Serial.print("The release altitude has been set to: ");
-    Serial.println(ReleaseAltitude);
+    Serial.print(ReleaseAltitude*100);
+    Serial.println(" feet");
+
     state = 2;
 
     break;
@@ -236,7 +234,7 @@ void StateMachine()
 void Buzz_Num(int num)
 {
   {
-    Serial.println(num);
+    //Serial.println(num);
     if (num > 0)
       for (int i = 0; i < num; i++)
       {
@@ -252,6 +250,7 @@ void readFlights(){
     Serial.print("Apogee ");
     Serial.print(i);
     Serial.print(": ");
+    Serial.println(EEPROM.read(i));
     Buzz_Num(EEPROM.read(i));
     delay(5000);
   }
@@ -321,11 +320,11 @@ void Buzz_Setup_Pass(){
 }
 
 void Buzz_User_Enter(){
-  tone(BUZZER_PIN, 750, 500);
+  tone(BUZZER_PIN, 750, 200);
   delay(500);
-  tone(BUZZER_PIN, 750, 500);
+  tone(BUZZER_PIN, 1000, 200);
   delay(500);
-  tone(BUZZER_PIN, 750, 500);
+  tone(BUZZER_PIN, 750, 200);
   delay(500);
 }
 /*
