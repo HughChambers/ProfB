@@ -28,6 +28,10 @@ const unsigned long beepDuration = 1000;  // Duration of the beep in millisecond
 const unsigned long beepDuration_touchdown = 200;  // Duration of each beep in milliseconds
 const unsigned long beepInterval = 500;  // Interval between beeps in milliseconds
 
+unsigned long previousMillis = 0;  // Holds the last time the timer was checked
+const unsigned long interval = 1000;  // Interval in milliseconds (1 second in this example)
+
+
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
@@ -328,9 +332,17 @@ float RAW_ALTITUDE()
 
 float KALMAN_ALTITUDE()
 {
+  unsigned long currentMillis = millis();  // Get the current time
+
+  // Check if the specified interval has elapsed
+  if (currentMillis - previousMillis >= interval) {
+   // Save the current time as the last checked time
+    previousMillis = currentMillis;
+
   //implement a timer for this
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
   return estimated_altitude;
+}
 }
 
 
