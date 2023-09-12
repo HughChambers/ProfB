@@ -9,9 +9,11 @@
 #define SERVO_PIN 5
 #define BUZZER_PIN 6
 #define BUTTON 7
-#define STATE_CHANGE 5
+#define STATE_CHANGE 20
+#define ARMING_ALTITUDE 50
 
 float groundPressure;
+float ApogeeAltitude;
 int CurrentAddress = 0;
 int address = 0;
 int state = 0;
@@ -19,6 +21,13 @@ int ReleaseAltitude = 0;
 unsigned long LastDebounce = 0;
 unsigned long CurrentTime = 0;
 unsigned long PreviousTime = 0;
+
+unsigned long beepStartTime;  // Variable to store the start time of the beep
+const unsigned long beepDuration = 1000;  // Duration of the beep in milliseconds
+
+const unsigned long beepDuration_touchdown = 200;  // Duration of each beep in milliseconds
+const unsigned long beepInterval = 500;  // Interval between beeps in milliseconds
+
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
@@ -43,7 +52,7 @@ void baromSetup();
 void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
-void printAPOGEE(int CurrentAddress);
+void PRINT_APOGEE(int CurrentAddress);
 void Buzz_Num(int num);
 void StateMachine();
 float RAW_ALTITUDE();
@@ -155,6 +164,7 @@ void APOGEE_DETECTION()
         {
             Serial.println("APOGEE");
             apogeeReached = true;
+            ApogeeAltitude = Filtered_altitude;
         }
         lastAltitude = Filtered_altitude;
       Serial.println(Filtered_altitude);
@@ -162,18 +172,33 @@ void APOGEE_DETECTION()
   
   void PRINT_APOGEE(int CurrentAddress)
   {
-      float lastAltitude_EEPROM = KALMAN_ALTITUDE();
-      float Filtered_altitude_EEPROM = KALMAN_ALTITUDE();
-      bool apogeeReached = false;
-      if ((Filtered_altitude_EEPROM < lastAltitude_EEPROM) and (apogeeReached == false))
-        {
-            apogeeReached = true;
-            EEPROM.put(CurrentAddress,Filtered_altitude_EEPROM);
-        }
+      
+    EEPROM.put(CurrentAddress,ApogeeAltitude);
+
   }
+
   
 
-void buzzer_idle(){ //Put the saved EEPROM into APOGEE //Serial.print(Apogee)
+void buzzer_idle() {
+      if (beepStartTime == 0) {
+    // Start the beep
+    tone(BUZZER_PIN, 1000);
+    beepStartTime = millis();
+      }
+  
+  // Check if the beep duration has passed
+  if (millis() - beepStartTime >= beepDuration) {
+    noTone(BUZZER_PIN);  // Stop the beep
+    //beepStartTime = 0;  // Reset the beep start time
+  }
+  }
+
+void buzzer_touchdown(){
+  if (millis() - beepStartTime >= beepInterval) {
+    // Start a new beep
+    tone(BUZZER_PIN, 1000);
+    beepStartTime = millis(); //Keep beeping until the rocket is retrieved
+  }
 
 }
  
@@ -204,6 +229,7 @@ void StateMachine()
     while (KALMAN_ALTITUDE() < STATE_CHANGE)
     {
       buzzer_idle();
+      state = 3;
     };
   }
   //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
@@ -215,12 +241,14 @@ void StateMachine()
   while (KALMAN_ALTITUDE() > STATE_CHANGE)
   {
     APOGEE_DETECTION();
+    state = 4;
   }
     break;
   //Save to EEPROM
   case APOGEE:
   {
-    printAPOGEE(CurrentAddress);
+    PRINT_APOGEE(CurrentAddress);
+    state = 5;
     //APOGEE Buzzer? buzzer_APOGEE
   }
     break;
@@ -300,6 +328,7 @@ float RAW_ALTITUDE()
 
 float KALMAN_ALTITUDE()
 {
+  //implement a timer for this
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
   return estimated_altitude;
 }
