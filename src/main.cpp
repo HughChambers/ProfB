@@ -183,19 +183,30 @@ void APOGEE_DETECTION()
 
   
 
-void buzzer_idle() {
-      if (beepStartTime == 0) {
-    // Start the beep
-    tone(BUZZER_PIN, 1000);
-    beepStartTime = millis();
-      }
+// void buzzer_idle() {
+//       if (beepStartTime == 0) {
+//     // Start the beep
+//     tone(BUZZER_PIN, 1000);
+//     beepStartTime = millis();
+//       }
   
-  // Check if the beep duration has passed
-  if (millis() - beepStartTime >= beepDuration) {
-    noTone(BUZZER_PIN);  // Stop the beep
-    //beepStartTime = 0;  // Reset the beep start time
-  }
-  }
+//   // Check if the beep duration has passed
+//   if (millis() - beepStartTime >= beepDuration) {
+//     noTone(BUZZER_PIN);  // Stop the beep
+//     //beepStartTime = 0;  // Reset the beep start time
+//   }
+//   }
+
+void buzzer_idle(){
+  // Beep the buzzer
+  tone(BUZZER_PIN, 1000); // 1000 Hz frequency
+  delay(100); // Beep duration in milliseconds
+  noTone(BUZZER_PIN); // Turn off the buzzer
+
+  // Wait for 10 seconds
+  delay(10000);
+}
+
 
 void buzzer_touchdown(){
   if (millis() - beepStartTime >= beepInterval) {
