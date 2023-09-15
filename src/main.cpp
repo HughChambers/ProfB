@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
-//#include <Servo.h>
+#include <Servo.h>
 
 #define buffer 16
 #define SERVO_PIN 5
@@ -11,6 +11,7 @@
 #define BUTTON 7
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
+#define TOUCHDOWN_CHANGE 5
 
 float groundPressure;
 float ApogeeAltitude;
@@ -37,7 +38,7 @@ const unsigned long interval = 1000;  // Interval in milliseconds (1 second in t
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
-//Servo ReleaseServo;
+Servo ReleaseServo;
 
 // State Enum
 enum State
@@ -49,6 +50,7 @@ enum State
   APOGEE,
   DESCENDING,
   RELEASE,
+  FINALDESCENT,
   TOUCHDOWN
 };
 
@@ -121,7 +123,12 @@ void General_Init()
 
 void Servo_Init()
 {
-  //ReleaseServo.attach(SERVO_PIN);
+  ReleaseServo.attach(SERVO_PIN);
+}
+
+void Servo_Release()
+{
+  //Actuate servo
 }
 
 void baromSetup()
@@ -244,7 +251,7 @@ void StateMachine()
     readFlights();
     // Insert function here to retrieve data from EEPROM
     delay(2000);
-    state = 1;
+    state = CONFIGURATION;
     break;
 
   case CONFIGURATION:
@@ -256,16 +263,16 @@ void StateMachine()
     Serial.print(ReleaseAltitude*100);
     Serial.println(" feet");
 
-    state = 2;
+    state = IDLE;
 
     break;
   case IDLE:
   {
     // while altitude is less than logging threshold, do nothing
-    while (KALMAN_ALTITUDE() < STATE_CHANGE)
+    while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
       buzzer_idle();
-      state = 3;
+      state = ASCENDING;
     };
   }
   //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
@@ -277,22 +284,38 @@ void StateMachine()
   while (KALMAN_ALTITUDE() > STATE_CHANGE)
   {
     APOGEE_DETECTION();
-    state = 4;
+    state = APOGEE;
   }
     break;
   //Save to EEPROM
   case APOGEE:
   {
     PRINT_APOGEE(CurrentAddress);
-    state = 5;
+    state = DESCENDING;
 
   }
     break;
   case DESCENDING:
+  while (KALMAN_ALTITUDE() < ReleaseAltitude)
+  {
+    state = RELEASE;
+  }
     break;
   case RELEASE:
+  {
+    //servo release function
+    state = FINALDESCENT;
+  }
     break;
+  case FINALDESCENT:
+  while(KALMAN_ALTITUDE() < TOUCHDOWN_CHANGE)
+  {
+    state = TOUCHDOWN;
+  }
   case TOUCHDOWN:
+  {
+    //perform some sort of idle buzzer 
+  }
     break;
 
   default:
