@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
-#include <Servo.h>
+//#include <Servo.h>
 
 #define buffer 16
 #define SERVO_PIN 5
@@ -18,6 +18,8 @@ int CurrentAddress = 0;
 int address = 0;
 int state = 0;
 int ReleaseAltitude = 0;
+
+// Timer variables
 unsigned long LastDebounce = 0;
 unsigned long CurrentTime = 0;
 unsigned long PreviousTime = 0;
@@ -35,7 +37,7 @@ const unsigned long interval = 1000;  // Interval in milliseconds (1 second in t
 
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
-Servo ReleaseServo;
+//Servo ReleaseServo;
 
 // State Enum
 enum State
@@ -58,9 +60,12 @@ int EEPROM_Init();
 int Altitude_Select();
 void PRINT_APOGEE(int CurrentAddress);
 void Buzz_Num(int num);
+void Buzz_Setup_Pass();
+void Buzz_User_Enter();
 void StateMachine();
 float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
+void readFlights();
 
 void setup()
 {
@@ -74,10 +79,22 @@ void setup()
   If initialisation occurs without any problems, then proceed into the main loop
   */
 
-  General_Init();
 
-  Serial.println("Init complete");
+
+
+  General_Init();
+  baromSetup();
+  Servo_Init();
   delay(2000);
+  Serial.println("Init complete");
+  
+  Buzz_Setup_Pass();
+
+  CurrentAddress = EEPROM_Init();
+  Serial.print("There are ");
+  Serial.print(CurrentAddress);
+  Serial.println(" flight(s) stored");
+  delay(5000);
 }
 
 void loop()
@@ -104,7 +121,7 @@ void General_Init()
 
 void Servo_Init()
 {
-  ReleaseServo.attach(SERVO_PIN);
+  //ReleaseServo.attach(SERVO_PIN);
 }
 
 void baromSetup()
@@ -223,7 +240,8 @@ void StateMachine()
   {
   case RETRIEVE_DATA:
     Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
-
+    
+    readFlights();
     // Insert function here to retrieve data from EEPROM
     delay(2000);
     state = 1;
@@ -232,9 +250,12 @@ void StateMachine()
   case CONFIGURATION:
 
     Serial.println("I will now set the Release altitude");
+    Buzz_User_Enter();
     ReleaseAltitude = Altitude_Select();
     Serial.print("The release altitude has been set to: ");
-    Serial.println(ReleaseAltitude);
+    Serial.print(ReleaseAltitude*100);
+    Serial.println(" feet");
+
     state = 2;
 
     break;
@@ -282,7 +303,7 @@ void StateMachine()
 void Buzz_Num(int num)
 {
   {
-    Serial.println(num);
+    //Serial.println(num);
     if (num > 0)
       for (int i = 0; i < num; i++)
       {
@@ -290,6 +311,17 @@ void Buzz_Num(int num)
         //Serial.println("buzz");
         delay(300);
       }
+  }
+}
+
+void readFlights(){
+  for(int i = 0; i < CurrentAddress; i++){
+    Serial.print("Apogee ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(EEPROM.read(i));
+    Buzz_Num(EEPROM.read(i));
+    delay(5000);
   }
 }
 
@@ -356,9 +388,23 @@ float KALMAN_ALTITUDE()
 }
 }
 
+void Buzz_Setup_Pass(){
+  tone(BUZZER_PIN, 750,500);
+  delay(500);
+  tone(BUZZER_PIN, 1000,500);
+  delay(500);
+  tone(BUZZER_PIN, 1250,500);
+  delay(500);
+}
 
-//* no where all the prevous flights are
-
+void Buzz_User_Enter(){
+  tone(BUZZER_PIN, 750, 200);
+  delay(500);
+  tone(BUZZER_PIN, 1000, 200);
+  delay(500);
+  tone(BUZZER_PIN, 750, 200);
+  delay(500);
+}
 /*
 -----------------------FUNCTION PLAN-------------------------------
 
