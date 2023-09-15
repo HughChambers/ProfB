@@ -251,7 +251,7 @@ void StateMachine()
   Serial.println("I am now in IDLE");
   delay(2000);
     break;
-  //Print APOGEE
+
   case ASCENDING:
   while (KALMAN_ALTITUDE() > STATE_CHANGE)
   {
@@ -264,7 +264,7 @@ void StateMachine()
   {
     PRINT_APOGEE(CurrentAddress);
     state = 5;
-    //APOGEE Buzzer? buzzer_APOGEE
+
   }
     break;
   case DESCENDING:
