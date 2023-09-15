@@ -67,19 +67,15 @@ void setup()
   */
 
 
-// Debug
-  EEPROM.write(0, 5);
-  EEPROM.write(1, 2);
-  EEPROM.write(2, 7);
-  CurrentAddress = 3;
+
 
   General_Init();
-  //baromSetup();
+  baromSetup();
   Servo_Init();
   delay(2000);
-
-Serial.println("Init complete");
-Buzz_Setup_Pass();
+  Serial.println("Init complete");
+  
+  Buzz_Setup_Pass();
 
   CurrentAddress = EEPROM_Init();
   Serial.print("There are ");
