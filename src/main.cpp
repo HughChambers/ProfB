@@ -68,6 +68,7 @@ void StateMachine();
 float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
 void readFlights();
+void Servo_ReleaseDeployed();
 
 void setup()
 {
@@ -101,6 +102,7 @@ void setup()
 
 void loop()
 {
+  
   // put your main code here, to run repeatedly:
   //run state machine here 
 
@@ -126,9 +128,34 @@ void Servo_Init()
   ReleaseServo.attach(SERVO_PIN);
 }
 
-void Servo_Release()
+void Servo_initlisation()
 {
+   ReleaseServo.write(0);
+
+}
+
+void Servo_Idle()
+{
+  ReleaseServo.write(180);
+}
+
+void Servo_ReleaseDeployed()
+{
+  // Calibrate the servo
+  ReleaseServo.write(0);    // Move to the minimum position
+  delay(1000);         // Wait for 1 second
+  ReleaseServo.write(180);  // Move to the maximum position
+  delay(1000);         // Wait for 1 second
+  ReleaseServo.write(90);   // Move to the center position
+  delay(1000);         // Wait for 1 second
+
+  // Actuate the servo
+  ReleaseServo.write(45);   // Move to a specific angle (45 degrees in this case)
+  delay(1000);         // Wait for 1 second
+  ReleaseServo.write(135);  // Move to another angle (135 degrees in this case)
+  delay(1000);         // Wait for 1 second
   //Actuate servo
+  //Servo angle open (initilisation) and angle closed (idle) (this can be calibrated)
 }
 
 void baromSetup()
@@ -263,6 +290,9 @@ void StateMachine()
     Serial.print(ReleaseAltitude*100);
     Serial.println(" feet");
 
+    Servo_initlisation();
+    Serial.println("Servo has been initialisied");
+
     state = IDLE;
 
     break;
@@ -272,6 +302,8 @@ void StateMachine()
     while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
       buzzer_idle();
+      Servo_Idle();
+      Serial.println("Servo is now locked in place");
       state = ASCENDING;
     };
   }
@@ -304,6 +336,7 @@ void StateMachine()
   case RELEASE:
   {
     //servo release function
+    Servo_ReleaseDeployed();
     state = FINALDESCENT;
   }
     break;
