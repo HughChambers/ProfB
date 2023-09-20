@@ -12,6 +12,8 @@
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
 #define TOUCHDOWN_CHANGE 5
+#define ANGLE_OPEN 0
+#define ANGLE_CLOSED 180
 
 float groundPressure;
 float ApogeeAltitude;
@@ -126,35 +128,30 @@ void General_Init()
 void Servo_Init()
 {
   ReleaseServo.attach(SERVO_PIN);
-}
-
-void Servo_initlisation()
-{
-   ReleaseServo.write(0);
-
+  ReleaseServo.write(ANGLE_OPEN);
 }
 
 void Servo_Idle()
 {
-  ReleaseServo.write(180);
+  ReleaseServo.write(ANGLE_CLOSED);
 }
 
 void Servo_ReleaseDeployed()
 {
   // Calibrate the servo
-  ReleaseServo.write(0);    // Move to the minimum position
-  delay(1000);         // Wait for 1 second
-  ReleaseServo.write(180);  // Move to the maximum position
-  delay(1000);         // Wait for 1 second
-  ReleaseServo.write(90);   // Move to the center position
-  delay(1000);         // Wait for 1 second
+  ReleaseServo.write(ANGLE_OPEN);    // Move to the minimum position
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(180);  // Move to the maximum position
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(90);   // Move to the center position
+  // delay(1000);         // Wait for 1 second
 
-  // Actuate the servo
-  ReleaseServo.write(45);   // Move to a specific angle (45 degrees in this case)
-  delay(1000);         // Wait for 1 second
-  ReleaseServo.write(135);  // Move to another angle (135 degrees in this case)
-  delay(1000);         // Wait for 1 second
-  //Actuate servo
+  // // Actuate the servo
+  // ReleaseServo.write(45);   // Move to a specific angle (45 degrees in this case)
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(135);  // Move to another angle (135 degrees in this case)
+  // delay(1000);         // Wait for 1 second
+  // //Actuate servo
   //Servo angle open (initilisation) and angle closed (idle) (this can be calibrated)
 }
 
@@ -290,8 +287,6 @@ void StateMachine()
     Serial.print(ReleaseAltitude*100);
     Serial.println(" feet");
 
-    Servo_initlisation();
-    Serial.println("Servo has been initialisied");
 
     state = IDLE;
 
