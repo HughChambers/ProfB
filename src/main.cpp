@@ -83,7 +83,7 @@ void setup()
 
   If initialisation occurs without any problems, then proceed into the main loop
   */
-
+ //hardware serial print to native
 
 
 
@@ -190,6 +190,8 @@ void baromSetup()
   groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
 }
 
+//Call eeprom.length it returns whatever length it is
+//Function needs to be rewritten if we are using floats 
 int EEPROM_Init()
 {
   for (uint16_t i = 0; i < EEPROM.length(); i++)
@@ -207,6 +209,9 @@ int EEPROM_Init()
 //Barometer initialisation //Kalman filter ---> save
 
 //Tell functon where data goes
+//Lockout based system, set a timer wait 2 seconds for example, check it again
+//if this alittude is still descending then we believe we are still descending
+//if new measurement is higher reset the counter 
 void APOGEE_DETECTION()
 {
       float lastAltitude = KALMAN_ALTITUDE();
@@ -222,11 +227,11 @@ void APOGEE_DETECTION()
       Serial.println(Filtered_altitude);
     }
   
+  //need to read all 4 bytes and get value for all of them
+  //alter EEPROM.READ function
   void PRINT_APOGEE(int CurrentAddress)
   {
-      
     EEPROM.put(CurrentAddress,ApogeeAltitude);
-
   }
 
   
@@ -351,6 +356,9 @@ void StateMachine()
   }
 }
 
+//Task//Doesnt buzz out the number 
+//e.g if user has 351 it should beep 3 times quickly, then break, 5 times quickly, then break than one time quickly
+//seperate each interval
 void Buzz_Num(int num)
 {
   {
@@ -492,3 +500,5 @@ beeps out a number
 
 
 */
+
+//Task Test the kalman filter 
