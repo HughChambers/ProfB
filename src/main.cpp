@@ -12,8 +12,8 @@
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
 #define TOUCHDOWN_CHANGE 5
-#define ANGLE_OPEN 0
-#define ANGLE_CLOSED 180
+#define ANGLE_OPEN 0 //Servo angle
+#define ANGLE_CLOSED 180 //Servo angle
 
 float groundPressure;
 float ApogeeAltitude;
@@ -179,7 +179,7 @@ void baromSetup()
     while (1)
       delay(10);
   }
-
+  
   /* Default settings from datasheet. */
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                   Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
@@ -225,7 +225,7 @@ void APOGEE_DETECTION()
         }
         lastAltitude = Filtered_altitude;
       Serial.println(Filtered_altitude);
-    }
+}
   
   //need to read all 4 bytes and get value for all of them
   //alter EEPROM.READ function
