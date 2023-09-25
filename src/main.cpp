@@ -252,6 +252,7 @@ void APOGEE_DETECTION()
 //   }
 //   }
 
+//Still need to incorporate millis e.g. beep every 5seconds 
 void buzzer_idle(){
   // Beep the buzzer
   tone(BUZZER_PIN, 1000); // 1000 Hz frequency
@@ -306,8 +307,8 @@ void StateMachine()
       buzzer_idle();
       Servo_Idle();
       Serial.println("Servo is now locked in place");
-      state = ASCENDING;
     };
+    state = ASCENDING;
   }
   //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
   Serial.println("I am now in IDLE");
