@@ -4,6 +4,7 @@
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
 #include <Servo.h>
+#include <Servo.h>
 
 #define buffer 16
 #define SERVO_PIN 5
@@ -11,6 +12,9 @@
 #define BUTTON 7
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
+#define TOUCHDOWN_CHANGE 5
+#define ANGLE_OPEN 0 //Servo angle
+#define ANGLE_CLOSED 180 //Servo angle
 
 float groundPressure;
 float ApogeeAltitude;
@@ -38,6 +42,7 @@ const unsigned long interval = 1000;  // Interval in milliseconds (1 second in t
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
 Servo ReleaseServo;
+Servo ReleaseServo;
 
 // State Enum
 enum State
@@ -49,6 +54,7 @@ enum State
   APOGEE,
   DESCENDING,
   RELEASE,
+  FINALDESCENT,
   TOUCHDOWN
 };
 
@@ -66,6 +72,7 @@ void StateMachine();
 float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
 void readFlights();
+void Servo_ReleaseDeployed();
 
 void setup()
 {
@@ -78,7 +85,7 @@ void setup()
 
   If initialisation occurs without any problems, then proceed into the main loop
   */
-
+ //hardware serial print to native
 
 
 
@@ -99,6 +106,7 @@ void setup()
 
 void loop()
 {
+  
   // put your main code here, to run repeatedly:
   //run state machine here 
 
@@ -122,6 +130,31 @@ void General_Init()
 void Servo_Init()
 {
   ReleaseServo.attach(SERVO_PIN);
+  ReleaseServo.write(ANGLE_OPEN);
+}
+
+void Servo_Idle()
+{
+  ReleaseServo.write(ANGLE_CLOSED);
+}
+
+void Servo_ReleaseDeployed()
+{
+  // Calibrate the servo
+  ReleaseServo.write(ANGLE_OPEN);    // Move to the minimum position
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(180);  // Move to the maximum position
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(90);   // Move to the center position
+  // delay(1000);         // Wait for 1 second
+
+  // // Actuate the servo
+  // ReleaseServo.write(45);   // Move to a specific angle (45 degrees in this case)
+  // delay(1000);         // Wait for 1 second
+  // ReleaseServo.write(135);  // Move to another angle (135 degrees in this case)
+  // delay(1000);         // Wait for 1 second
+  // //Actuate servo
+  //Servo angle open (initilisation) and angle closed (idle) (this can be calibrated)
 }
 
 void baromSetup()
@@ -148,7 +181,7 @@ void baromSetup()
     while (1)
       delay(10);
   }
-
+  
   /* Default settings from datasheet. */
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                   Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
@@ -159,6 +192,8 @@ void baromSetup()
   groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
 }
 
+//Call eeprom.length it returns whatever length it is
+//Function needs to be rewritten if we are using floats 
 int EEPROM_Init()
 {
   for (uint16_t i = 0; i < EEPROM.length(); i++)
@@ -176,6 +211,9 @@ int EEPROM_Init()
 //Barometer initialisation //Kalman filter ---> save
 
 //Tell functon where data goes
+//Lockout based system, set a timer wait 2 seconds for example, check it again
+//if this alittude is still descending then we believe we are still descending
+//if new measurement is higher reset the counter 
 void APOGEE_DETECTION()
 {
       float lastAltitude = KALMAN_ALTITUDE();
@@ -189,13 +227,13 @@ void APOGEE_DETECTION()
         }
         lastAltitude = Filtered_altitude;
       Serial.println(Filtered_altitude);
-    }
+}
   
+  //need to read all 4 bytes and get value for all of them
+  //alter EEPROM.READ function
   void PRINT_APOGEE(int CurrentAddress)
   {
-      
     EEPROM.put(CurrentAddress,ApogeeAltitude);
-
   }
 
   
@@ -244,7 +282,7 @@ void StateMachine()
     readFlights();
     // Insert function here to retrieve data from EEPROM
     delay(2000);
-    state = 1;
+    state = CONFIGURATION;
     break;
 
   case CONFIGURATION:
@@ -256,16 +294,19 @@ void StateMachine()
     Serial.print(ReleaseAltitude*100);
     Serial.println(" feet");
 
-    state = 2;
+
+    state = IDLE;
 
     break;
   case IDLE:
   {
     // while altitude is less than logging threshold, do nothing
-    while (KALMAN_ALTITUDE() < STATE_CHANGE)
+    while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
       buzzer_idle();
-      state = 3;
+      Servo_Idle();
+      Serial.println("Servo is now locked in place");
+      state = ASCENDING;
     };
   }
   //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
@@ -277,22 +318,39 @@ void StateMachine()
   while (KALMAN_ALTITUDE() > STATE_CHANGE)
   {
     APOGEE_DETECTION();
-    state = 4;
+    state = APOGEE;
   }
     break;
   //Save to EEPROM
   case APOGEE:
   {
     PRINT_APOGEE(CurrentAddress);
-    state = 5;
+    state = DESCENDING;
 
   }
     break;
   case DESCENDING:
+  while (KALMAN_ALTITUDE() < ReleaseAltitude)
+  {
+    state = RELEASE;
+  }
     break;
   case RELEASE:
+  {
+    //servo release function
+    Servo_ReleaseDeployed();
+    state = FINALDESCENT;
+  }
     break;
+  case FINALDESCENT:
+  while(KALMAN_ALTITUDE() < TOUCHDOWN_CHANGE)
+  {
+    state = TOUCHDOWN;
+  }
   case TOUCHDOWN:
+  {
+    //perform some sort of idle buzzer 
+  }
     break;
 
   default:
@@ -300,6 +358,9 @@ void StateMachine()
   }
 }
 
+//Task//Doesnt buzz out the number 
+//e.g if user has 351 it should beep 3 times quickly, then break, 5 times quickly, then break than one time quickly
+//seperate each interval
 void Buzz_Num(int num)
 {
   {
@@ -441,3 +502,5 @@ beeps out a number
 
 
 */
+
+//Task Test the kalman filter 
