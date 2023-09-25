@@ -4,7 +4,7 @@
 #include <Adafruit_BMP280.h>
 #include <SimpleKalmanFilter.h>
 #include <Servo.h>
-#include <Servo.h>
+
 
 #define buffer 16
 #define SERVO_PIN 5
@@ -42,7 +42,7 @@ const unsigned long interval = 1000;  // Interval in milliseconds (1 second in t
 SimpleKalmanFilter pressureKalmanFilter(5, 5, 5);
 Adafruit_BMP280 bmp; // I2C
 Servo ReleaseServo;
-Servo ReleaseServo;
+
 
 // State Enum
 enum State
