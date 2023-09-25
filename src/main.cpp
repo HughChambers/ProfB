@@ -12,8 +12,8 @@
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
 #define TOUCHDOWN_CHANGE 5
-#define ANGLE_OPEN 0 //Servo angle
-#define ANGLE_CLOSED 180 //Servo angle
+#define ANGLE_OPEN 0 //Servo min angle
+#define ANGLE_CLOSED 180 //Servo max angle
 
 float groundPressure;
 float ApogeeAltitude;
