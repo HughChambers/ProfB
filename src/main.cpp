@@ -34,8 +34,10 @@ const unsigned long beepDuration = 1000;  // Duration of the beep in millisecond
 const unsigned long beepDuration_touchdown = 200;  // Duration of each beep in milliseconds
 const unsigned long beepInterval = 500;  // Interval between beeps in milliseconds
 
-unsigned long previousMillis = 0;  // Holds the last time the timer was checked
-const unsigned long interval = 1000;  // Interval in milliseconds (1 second in this example)
+
+unsigned long previousMillis = 0; // Store the last time a beep was generated
+const unsigned long interval = 5000; // Interval between beeps in milliseconds (5 seconds)
+bool beepOn = false; // Flag to track if a beep should be generated
 
 
 
@@ -263,6 +265,31 @@ void buzzer_idle(){
   delay(10000);
 }
 
+void buzzer_idle_test(){
+  unsigned long currentMillis = millis(); // Get the current time
+
+  // Check if it's time to generate a beep
+  if (currentMillis - previousMillis >= interval && !beepOn) {
+    // Save the current time for the next interval
+    previousMillis = currentMillis;
+
+    // Set the flag to indicate a beep should be generated
+    beepOn = true;
+  }
+
+  // Check if a beep should be generated
+  if (beepOn) {
+    // Generate the beep
+    unsigned long beepDuration = 300; // Adjust the beep duration as needed
+    if (currentMillis - previousMillis < beepDuration) {
+      tone(BUZZER_PIN, 1000); // Turn the buzzer on
+    } else {
+      noTone(BUZZER_PIN); // Turn the buzzer off
+      beepOn = false; // Reset the flag
+    }
+  }
+}
+
 
 void buzzer_touchdown(){
   if (millis() - beepStartTime >= beepInterval) {
@@ -304,7 +331,8 @@ void StateMachine()
     // while altitude is less than logging threshold, do nothing
     while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
-      buzzer_idle();
+      //buzzer_idle();
+      buzzer_idle_test();
       Servo_Idle();
       Serial.println("Servo is now locked in place");
     };
@@ -326,9 +354,8 @@ void StateMachine()
   case APOGEE:
   {
     PRINT_APOGEE(CurrentAddress);
-    state = DESCENDING;
-
   }
+  state = DESCENDING;
     break;
   case DESCENDING:
   while (KALMAN_ALTITUDE() < ReleaseAltitude)
@@ -340,8 +367,8 @@ void StateMachine()
   {
     //servo release function
     Servo_ReleaseDeployed();
-    state = FINALDESCENT;
   }
+   state = FINALDESCENT;
     break;
   case FINALDESCENT:
   while(KALMAN_ALTITUDE() < TOUCHDOWN_CHANGE)
