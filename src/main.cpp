@@ -17,7 +17,8 @@
 #define ANGLE_CLOSED 180 //Servo max angle
 
 float groundPressure;
-float ApogeeAltitude;
+//float ApogeeAltitude;
+byte ApogeeAltitude;
 int CurrentAddress = 0;
 int address = 0;
 int state = 0;
@@ -238,6 +239,11 @@ void APOGEE_DETECTION()
     EEPROM.put(CurrentAddress,ApogeeAltitude);
   }
 
+  void PRINT_APOGEE_INT(int CurrentAddress)
+  {
+    EEPROM.write(CurrentAddress,ApogeeAltitude);
+  }
+
   
 
 // void buzzer_idle() {
@@ -257,7 +263,7 @@ void APOGEE_DETECTION()
 //Still need to incorporate millis e.g. beep every 5seconds 
 void buzzer_idle(){
   // Beep the buzzer
-  tone(BUZZER_PIN, 1000); // 1000 Hz frequency
+  tone(BUZZER_PIN, 4000); // 1000 Hz frequency
   delay(100); // Beep duration in milliseconds
   noTone(BUZZER_PIN); // Turn off the buzzer
 
@@ -335,6 +341,8 @@ void StateMachine()
       buzzer_idle_test();
       Servo_Idle();
       Serial.println("Servo is now locked in place");
+      Serial.println(bmp.readAltitude(groundPressure));
+      Serial.println(bmp.readPressure());
     };
     state = ASCENDING;
   }
@@ -354,6 +362,9 @@ void StateMachine()
   case APOGEE:
   {
     PRINT_APOGEE(CurrentAddress);
+    EEPROM.write(bmp.readAltitude(groundPressure), CurrentAddress+1);
+    state = DESCENDING;
+
   }
   state = DESCENDING;
     break;
