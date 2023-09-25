@@ -8,8 +8,8 @@
 
 #define buffer 16
 #define SERVO_PIN 5
-#define BUZZER_PIN 6
-#define BUTTON 7
+#define BUZZER_PIN 1
+#define BUTTON 6
 #define STATE_CHANGE 20
 #define ARMING_ALTITUDE 50
 #define TOUCHDOWN_CHANGE 5
@@ -167,7 +167,7 @@ void baromSetup()
   // Serial.println("test");
   status = bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID);
 
-  // status = bmp.begin(0x76);
+   //status = bmp.begin(0x76);
   if (!status)
   {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
