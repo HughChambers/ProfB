@@ -79,7 +79,7 @@ float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
 void readFlights();
 void Servo_ReleaseDeployed();
-int APOGEE_DETECTION(byte lastAltitude)
+int APOGEE_DETECTION(byte lastAltitude);
 
 void setup()
 {
@@ -353,7 +353,7 @@ void StateMachine()
   byte lastAltitude = KALMAN_ALTITUDE();
   while (KALMAN_ALTITUDE() > ASCENDING_ALTITUDE)
   {
-    APOGEE_DETECTION(byte lastAltitude);
+    APOGEE_DETECTION(lastAltitude);
 
 
   }
