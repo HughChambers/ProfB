@@ -10,9 +10,9 @@
 #define SERVO_PIN 5
 #define BUZZER_PIN 1
 #define BUTTON 6
-#define STATE_CHANGE 20
-#define ARMING_ALTITUDE 5
-#define TOUCHDOWN_CHANGE 5
+#define ASCENDING_ALTITUDE 20/2 // halve because of altitude halve
+#define ARMING_ALTITUDE 20/2 // halve because of altitude halve
+#define TOUCHDOWN_ALTITUDE 5
 #define ANGLE_OPEN 0 //Servo min angle
 #define ANGLE_CLOSED 180 //Servo max angle
 #define IdleInterval 5000
@@ -79,6 +79,7 @@ float RAW_ALTITUDE();
 float KALMAN_ALTITUDE();
 void readFlights();
 void Servo_ReleaseDeployed();
+int APOGEE_DETECTION(byte lastAltitude)
 
 void setup()
 {
@@ -207,26 +208,33 @@ int EEPROM_Init()
 //Lockout based system, set a timer wait 2 seconds for example, check it again
 //if this alittude is still descending then we believe we are still descending
 //if new measurement is higher reset the counter 
-void APOGEE_DETECTION()
+int APOGEE_DETECTION(byte lastAltitude)
 {
-      float lastAltitude = KALMAN_ALTITUDE();
-      float Filtered_altitude = KALMAN_ALTITUDE();
+      
+      byte Filtered_altitude = KALMAN_ALTITUDE();
       bool apogeeReached = false;
       if ((Filtered_altitude < lastAltitude) and (apogeeReached == false))
         {
             Serial.println("APOGEE");
             apogeeReached = true;
             ApogeeAltitude = Filtered_altitude;
+            return 1;
         }
+       
+        else
         lastAltitude = Filtered_altitude;
-      Serial.println(Filtered_altitude);
+        Serial.println(Filtered_altitude);
+        return 0;
+
 }
   
   //need to read all 4 bytes and get value for all of them
   //alter EEPROM.READ function
   void PRINT_APOGEE(int CurrentAddress)
   {
-    EEPROM.put(CurrentAddress,ApogeeAltitude);
+    EEPROM.write(CurrentAddress,ApogeeAltitude);
+    byte rawAlt = bmp.readAltitude(groundPressure);
+    EEPROM.write(rawAlt, CurrentAddress+1);
   }
 
   void PRINT_APOGEE_INT(int CurrentAddress)
@@ -329,31 +337,33 @@ void StateMachine()
     // while altitude is less than logging threshold, do nothing
     while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
-      //buzzer_idle();
       buzzer_idle_test();
-      //Servo_Idle();
       //Serial.println("Servo is now locked in place");
-
     };
     Serial.println("leaving idle");
     noTone(BUZZER_PIN);
     state = ASCENDING;
-  delay(2000);
+  //delay(2000);
     break;
 
+
+  // insert condition for changing state from 
   case ASCENDING:
   Serial.println("ASCENDING");
-  while (KALMAN_ALTITUDE() > STATE_CHANGE)
+  byte lastAltitude = KALMAN_ALTITUDE();
+  while (KALMAN_ALTITUDE() > ASCENDING_ALTITUDE)
   {
-    APOGEE_DETECTION();
-    state = APOGEE;
+    APOGEE_DETECTION(byte lastAltitude);
+
+
   }
+
+  state = APOGEE;
     break;
   //Save to EEPROM
   case APOGEE:
   {
     PRINT_APOGEE(CurrentAddress);
-    EEPROM.write(bmp.readAltitude(groundPressure), CurrentAddress+1);
     state = DESCENDING;
 
   }
@@ -373,7 +383,7 @@ void StateMachine()
    state = FINALDESCENT;
     break;
   case FINALDESCENT:
-  while(KALMAN_ALTITUDE() < TOUCHDOWN_CHANGE)
+  while(KALMAN_ALTITUDE() < TOUCHDOWN_ALTITUDE)
   {
     state = TOUCHDOWN;
   }
@@ -403,7 +413,9 @@ void Buzz_Num(int num)
   }
 }
 
+// Implement breakdown of hundreds, tens and ones
 void readFlights(){
+
   Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
   for(int i = 0; i < CurrentAddress; i++){
     Serial.print("Apogee ");
@@ -451,7 +463,7 @@ float RAW_ALTITUDE()
   /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
   float altitude = bmp.readAltitude(groundPressure);
   Serial.println(altitude);
-  return altitude;
+  return altitude/2;
 }
 
 float KALMAN_ALTITUDE()
@@ -466,7 +478,6 @@ float KALMAN_ALTITUDE()
 
   //implement a timer for this
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
-  Serial.println(estimated_altitude);
   return estimated_altitude;
 
 }
