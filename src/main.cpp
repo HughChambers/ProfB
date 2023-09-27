@@ -11,10 +11,13 @@
 #define BUZZER_PIN 1
 #define BUTTON 6
 #define STATE_CHANGE 20
-#define ARMING_ALTITUDE 50
+#define ARMING_ALTITUDE 5
 #define TOUCHDOWN_CHANGE 5
 #define ANGLE_OPEN 0 //Servo min angle
 #define ANGLE_CLOSED 180 //Servo max angle
+#define IdleInterval 5000
+#define KalmanInterval 100
+#define beepduration 300
 
 float groundPressure;
 //float ApogeeAltitude;
@@ -36,8 +39,8 @@ const unsigned long beepDuration_touchdown = 200;  // Duration of each beep in m
 const unsigned long beepInterval = 500;  // Interval between beeps in milliseconds
 
 
-unsigned long previousMillis = 0; // Store the last time a beep was generated
-const unsigned long interval = 5000; // Interval between beeps in milliseconds (5 seconds)
+unsigned long previousKalmanMillis = 0; // Store the last time a beep was generated
+unsigned long previousIdleMillis = 0;
 bool beepOn = false; // Flag to track if a beep should be generated
 
 
@@ -145,19 +148,6 @@ void Servo_ReleaseDeployed()
 {
   // Calibrate the servo
   ReleaseServo.write(ANGLE_OPEN);    // Move to the minimum position
-  // delay(1000);         // Wait for 1 second
-  // ReleaseServo.write(180);  // Move to the maximum position
-  // delay(1000);         // Wait for 1 second
-  // ReleaseServo.write(90);   // Move to the center position
-  // delay(1000);         // Wait for 1 second
-
-  // // Actuate the servo
-  // ReleaseServo.write(45);   // Move to a specific angle (45 degrees in this case)
-  // delay(1000);         // Wait for 1 second
-  // ReleaseServo.write(135);  // Move to another angle (135 degrees in this case)
-  // delay(1000);         // Wait for 1 second
-  // //Actuate servo
-  //Servo angle open (initilisation) and angle closed (idle) (this can be calibrated)
 }
 
 void baromSetup()
@@ -275,20 +265,23 @@ void buzzer_idle_test(){
   unsigned long currentMillis = millis(); // Get the current time
 
   // Check if it's time to generate a beep
-  if (currentMillis - previousMillis >= interval && !beepOn) {
+  if ((currentMillis - previousIdleMillis) > IdleInterval && !beepOn) {
     // Save the current time for the next interval
-    previousMillis = currentMillis;
+    previousIdleMillis = currentMillis;
 
     // Set the flag to indicate a beep should be generated
-    beepOn = true;
+   beepOn = true;
+   tone(BUZZER_PIN, 4000);
   }
 
-  // Check if a beep should be generated
+  // // Check if a beep should be generated
   if (beepOn) {
     // Generate the beep
-    unsigned long beepDuration = 300; // Adjust the beep duration as needed
-    if (currentMillis - previousMillis < beepDuration) {
-      tone(BUZZER_PIN, 1000); // Turn the buzzer on
+     // Adjust the beep duration as needed
+     currentMillis = millis();
+    if (currentMillis - previousIdleMillis < beepDuration) {
+       // Turn the buzzer on
+       // do nothing
     } else {
       noTone(BUZZER_PIN); // Turn the buzzer off
       beepOn = false; // Reset the flag
@@ -300,7 +293,7 @@ void buzzer_idle_test(){
 void buzzer_touchdown(){
   if (millis() - beepStartTime >= beepInterval) {
     // Start a new beep
-    tone(BUZZER_PIN, 1000);
+    tone(BUZZER_PIN, 4000);
     beepStartTime = millis(); //Keep beeping until the rocket is retrieved
   }
 
@@ -311,10 +304,8 @@ void StateMachine()
   switch (state)
   {
   case RETRIEVE_DATA:
-    Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
     
     readFlights();
-    // Insert function here to retrieve data from EEPROM
     delay(2000);
     state = CONFIGURATION;
     break;
@@ -327,31 +318,31 @@ void StateMachine()
     Serial.print("The release altitude has been set to: ");
     Serial.print(ReleaseAltitude*100);
     Serial.println(" feet");
+    Serial.println(groundPressure);
 
 
     state = IDLE;
 
     break;
   case IDLE:
-  {
+  
     // while altitude is less than logging threshold, do nothing
     while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
     {
       //buzzer_idle();
       buzzer_idle_test();
-      Servo_Idle();
-      Serial.println("Servo is now locked in place");
-      Serial.println(bmp.readAltitude(groundPressure));
-      Serial.println(bmp.readPressure());
+      //Servo_Idle();
+      //Serial.println("Servo is now locked in place");
+
     };
+    Serial.println("leaving idle");
+    noTone(BUZZER_PIN);
     state = ASCENDING;
-  }
-  //Work On IDLE (Have its own buzzer function) //Once every 10 seconds have a buzzer effect 
-  Serial.println("I am now in IDLE");
   delay(2000);
     break;
 
   case ASCENDING:
+  Serial.println("ASCENDING");
   while (KALMAN_ALTITUDE() > STATE_CHANGE)
   {
     APOGEE_DETECTION();
@@ -403,18 +394,17 @@ void StateMachine()
 void Buzz_Num(int num)
 {
   {
-    //Serial.println(num);
     if (num > 0)
       for (int i = 0; i < num; i++)
       {
         tone(BUZZER_PIN, 2000, 75);
-        //Serial.println("buzz");
         delay(300);
       }
   }
 }
 
 void readFlights(){
+  Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
   for(int i = 0; i < CurrentAddress; i++){
     Serial.print("Apogee ");
     Serial.print(i);
@@ -436,28 +426,20 @@ int Altitude_Select()
   while (timeout < 5000)
   {
     timeout = millis() - entertime;
-    // Serial.println("debug 1");
-
     if (!digitalRead(BUTTON))
     {
       unsigned long DebounceDelay = 400;
       if (millis() - LastDebounce > DebounceDelay)
       {
-       // Serial.println("debug 2");
+
         timeout = 0;
         entertime = millis();
         Altitude = Altitude + 1;
-        //Serial.println(Altitude);
         LastDebounce = millis();
-        //Serial.print("Millis: ");
-        //Serial.println(millis());
-       // Serial.print("Last debounce: ");
-        //Serial.println(LastDebounce);
         tone(BUZZER_PIN, 2000, 50);
       }
     }
   }
-
   if (Altitude > 1400)
     Altitude = 0;
   Buzz_Num(Altitude);
@@ -467,9 +449,8 @@ int Altitude_Select()
 float RAW_ALTITUDE()
 {
   /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
-
   float altitude = bmp.readAltitude(groundPressure);
-
+  Serial.println(altitude);
   return altitude;
 }
 
@@ -478,13 +459,16 @@ float KALMAN_ALTITUDE()
   unsigned long currentMillis = millis();  // Get the current time
 
   // Check if the specified interval has elapsed
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousKalmanMillis >= KalmanInterval) {
    // Save the current time as the last checked time
-    previousMillis = currentMillis;
+    previousKalmanMillis = currentMillis;
+    //Serial.println("kalman");
 
   //implement a timer for this
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
+  Serial.println(estimated_altitude);
   return estimated_altitude;
+
 }
 }
 
