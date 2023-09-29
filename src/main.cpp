@@ -8,7 +8,8 @@
 
 #define buffer 16
 #define SERVO_PIN 5
-#define BUZZER_PIN 1
+//#define BUZZER_PIN 1
+#define BUZZER_PIN A1
 #define BUTTON 6
 #define ASCENDING_ALTITUDE 20/2 // halve because of altitude halve
 #define ARMING_ALTITUDE 20/2 // halve because of altitude halve
@@ -71,7 +72,12 @@ void Servo_Init();
 int EEPROM_Init();
 int Altitude_Select();
 void PRINT_APOGEE(int CurrentAddress);
-void Buzz_Num(int num);
+void Buzz_NumOnes(int num);
+void Buzz_NumHundreds(int num);
+void Buzz_NumTens(int num);
+void Buzz_NumThousands(int num);
+
+
 void Buzz_Setup_Pass();
 void Buzz_User_Enter();
 void StateMachine();
@@ -104,6 +110,9 @@ void setup()
   
   Buzz_Setup_Pass();
 
+   EEPROM.write(0, 187);
+   EEPROM.write(1, 47);
+   EEPROM.write(2, 5);
   CurrentAddress = EEPROM_Init();
   Serial.print("There are ");
   Serial.print(CurrentAddress);
@@ -190,16 +199,26 @@ void baromSetup()
 //Function needs to be rewritten if we are using floats 
 int EEPROM_Init()
 {
-  for (uint16_t i = 0; i < EEPROM.length(); i++)
+  for (uint16_t i = 0; i < 1024; i++)
   {
     // this performs as EEPROM.write(i, i)
-    if (EEPROM.read(i) == 255)
-    {
+    int val = EEPROM.read(i);
+    //Serial.print("I am printing val:   ");
+    //Serial.println(val);
+    delay(10);
+    if (val == 255){
       return i;
+      break;
     }
   }
-  return 0;
-}
+  //return 0;
+   // {
+   //   return i;
+   //   Serial.print("reading");
+    }
+  
+ // return 0;
+
 //DetectApogee instead of PrintApogee
 //Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
 //Barometer initialisation //Kalman filter ---> save
@@ -324,7 +343,7 @@ void StateMachine()
     Buzz_User_Enter();
     ReleaseAltitude = Altitude_Select();
     Serial.print("The release altitude has been set to: ");
-    Serial.print(ReleaseAltitude*100);
+    Serial.print(ReleaseAltitude);
     Serial.println(" feet");
     Serial.println(groundPressure);
 
@@ -401,16 +420,82 @@ void StateMachine()
 //Task//Doesnt buzz out the number 
 //e.g if user has 351 it should beep 3 times quickly, then break, 5 times quickly, then break than one time quickly
 //seperate each interval
-void Buzz_Num(int num)
+void Buzz_NumOnes(int num)
 {
   {
-    if (num > 0)
-      for (int i = 0; i < num; i++)
+    if (((num/1U) %10) > 0){
+      for (int i = 0; i < ((num/1U) %10); i++)
       {
         tone(BUZZER_PIN, 2000, 75);
         delay(300);
       }
   }
+  else{
+  tone(BUZZER_PIN, 300, 75);
+         delay(300);
+  }
+  }
+}
+
+void Buzz_NumThousands(int num)
+{
+  {
+    if ((num/1000U)%10 > 0){
+      for (int i = 0; i < ((num/1000U) % 10); i++)
+      {
+        tone(BUZZER_PIN, 2000, 75);
+        delay(300);
+      }
+  }
+  else
+  tone(BUZZER_PIN, 300, 75);
+         delay(300);
+  // for (int i = 0; i < 11; i++)
+  //     {
+  //       tone(BUZZER_PIN, 2000, 75);
+  //       delay(300);
+  //     }
+  }
+}
+
+void Buzz_NumHundreds(int num)
+{
+  {
+    if ((num/100U)%10> 0){
+      for (int i = 0; i < ((num/100U) % 10); i++)
+      {
+        tone(BUZZER_PIN, 2000, 75);
+        delay(300);
+      }
+  }
+   else{
+    
+   tone(BUZZER_PIN, 300, 75);
+         delay(300);
+   }
+  // for (int i = 0; i < 10; i++)
+  //     {
+  //       tone(BUZZER_PIN, 2000, 75);
+  //       delay(300);
+  //     }
+  }
+}
+
+void Buzz_NumTens(int num)
+{
+  {
+    if (num > 0){
+      for (int i = 0; i < ((num/10U) %10); i++)
+      {
+        tone(BUZZER_PIN, 2000, 75);
+        delay(300);
+      }
+  }
+  else{
+   tone(BUZZER_PIN, 300, 75);
+         delay(300);
+  }
+}
 }
 
 // Implement breakdown of hundreds, tens and ones
@@ -421,9 +506,23 @@ void readFlights(){
     Serial.print("Apogee ");
     Serial.print(i);
     Serial.print(": ");
-    Serial.println(EEPROM.read(i));
-    Buzz_Num(EEPROM.read(i));
-    delay(5000);
+    Serial.println(EEPROM.read(i)*2);
+    Buzz_NumThousands(EEPROM.read(i)*2);
+    delay(2000);
+    Buzz_NumHundreds(EEPROM.read(i)*2);
+    delay(2000);
+    Buzz_NumTens(EEPROM.read(i)*2);
+    delay(2000);
+    Buzz_NumOnes(EEPROM.read(i)*2);
+  
+  tone(BUZZER_PIN, 1250,500);
+  delay(500);
+  tone(BUZZER_PIN, 1000,500);
+  delay(500);
+  tone(BUZZER_PIN, 750,500);
+  delay(500);
+
+
   }
 }
 
@@ -452,10 +551,12 @@ int Altitude_Select()
       }
     }
   }
-  if (Altitude > 1400)
-    Altitude = 0;
-  Buzz_Num(Altitude);
-  return Altitude;
+  if (Altitude > 15)
+    Altitude = 15;
+  Buzz_NumOnes(Altitude);
+  delay(1000);
+  
+  return (Altitude*100)/2;
 }
 
 float RAW_ALTITUDE()
