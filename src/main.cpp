@@ -110,12 +110,17 @@ void setup()
   
   Buzz_Setup_Pass();
 
-   EEPROM.write(0, 187);
-   EEPROM.write(1, 47);
-   EEPROM.write(2, 5);
+  //  EEPROM.write(0, 187);
+  //  EEPROM.write(1, 47);
+  //  EEPROM.write(2, 5);
+  for(int i = 0; i< EEPROM.length(); i++){
+    EEPROM.write(i, 255);
+    delay(25);
+  }
   CurrentAddress = EEPROM_Init();
   Serial.print("There are ");
   Serial.print(CurrentAddress);
+  
   Serial.println(" flight(s) stored");
   delay(5000);
 }
@@ -318,11 +323,14 @@ void buzzer_idle_test(){
 
 
 void buzzer_touchdown(){
-  if (millis() - beepStartTime >= beepInterval) {
-    // Start a new beep
-    tone(BUZZER_PIN, 4000);
-    beepStartTime = millis(); //Keep beeping until the rocket is retrieved
-  }
+  // if (millis() - beepStartTime >= beepInterval) {
+  //   // Start a new beep
+  //   tone(BUZZER_PIN, 4000);
+  //   beepStartTime = millis(); //Keep beeping until the rocket is retrieved
+  // }
+
+  tone(BUZZER_PIN, 4000, 1000);
+  delay(10000);
 
 }
  
@@ -409,6 +417,7 @@ void StateMachine()
   case TOUCHDOWN:
   {
     //perform some sort of idle buzzer 
+    buzzer_touchdown();
   }
     break;
 
@@ -502,6 +511,7 @@ void Buzz_NumTens(int num)
 void readFlights(){
 
   Serial.println("I am retrieving saved data (read flights from EEPROM) and will buzz them out");
+  Buzz_NumOnes(CurrentAddress);
   for(int i = 0; i < CurrentAddress; i++){
     Serial.print("Apogee ");
     Serial.print(i);
