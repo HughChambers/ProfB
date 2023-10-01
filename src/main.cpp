@@ -286,7 +286,7 @@ void buzzer_idle_test(){
   // Check if a beep should be generated
   if (beepOn) {
     // Generate the beep
-    unsigned long beepDuration = 300; // Adjust the beep duration as needed
+    unsigned long beepDuration = 300; // Adjust the beep duration to whatever
     if (currentMillis - previousMillis < beepDuration) {
       tone(BUZZER_PIN, 1000); // Turn the buzzer on
     } else {
@@ -378,6 +378,7 @@ void StateMachine()
   {
     //servo release function
     Servo_ReleaseDeployed();
+    Serial.println("The servo has now released  ");
   }
    state = FINALDESCENT;
     break;
@@ -388,6 +389,7 @@ void StateMachine()
   }
   case TOUCHDOWN:
   {
+    buzzer_touchdown();
     //perform some sort of idle buzzer 
   }
     break;
@@ -457,7 +459,7 @@ int Altitude_Select()
       }
     }
   }
-
+  //if you press more than 14 times it resets
   if (Altitude > 1400)
     Altitude = 0;
   Buzz_Num(Altitude);
