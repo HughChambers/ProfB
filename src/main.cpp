@@ -13,7 +13,7 @@
 #define BUTTON 6
 #define ASCENDING_ALTITUDE 20/2 // halve because of altitude halve
 #define ARMING_ALTITUDE 20/2 // halve because of altitude halve
-#define TOUCHDOWN_ALTITUDE 5
+#define TOUCHDOWN_ALTITUDE 1000
 #define ANGLE_OPEN 0 //Servo min angle
 #define ANGLE_CLOSED 180 //Servo max angle
 #define IdleInterval 5000
@@ -134,7 +134,6 @@ void loop()
   
   // put your main code here, to run repeatedly:
   //run state machine here 
-
   StateMachine();
 
 }
@@ -472,7 +471,15 @@ void StateMachine()
     while(1){
     Serial.println("inshallah");
     //perform some sort of idle buzzer 
-    buzzer_touchdown();
+    //buzzer_touchdown();
+    Serial.print("Apogee altitude:   ");
+    Serial.println(ApogeeAltitude*2);
+    Buzz_NumHundreds(ApogeeAltitude*2);
+    delay(2000);
+    Buzz_NumTens(ApogeeAltitude*2);
+    delay(2000);
+    Buzz_NumOnes(ApogeeAltitude*2);
+    delay(10000);
   }
 
 
