@@ -11,9 +11,9 @@
 #define BUZZER_PIN 1
 //#define BUZZER_PIN A1
 #define BUTTON 6
-#define ASCENDING_ALTITUDE 20/2 // halve because of altitude halve
-#define ARMING_ALTITUDE 20/2 // halve because of altitude halve
-#define TOUCHDOWN_ALTITUDE 1000
+#define LAUNCH_DETECT_ALTITUDE 30/2 // halve because of altitude halve
+#define ARMING_ALTITUDE 25/2 // halve because of altitude halve
+#define TOUCHDOWN_ALTITUDE 50/2
 #define ANGLE_OPEN 0 //Servo min angle
 #define ANGLE_CLOSED 180 //Servo max angle
 #define IdleInterval 5000
@@ -35,11 +35,10 @@ unsigned long PreviousTime = 0;
 
 unsigned long beepStartTime;  // Variable to store the start time of the beep
 const unsigned long beepDuration = 1000;  // Duration of the beep in milliseconds
-
 const unsigned long beepDuration_touchdown = 200;  // Duration of each beep in milliseconds
 const unsigned long beepInterval = 500;  // Interval between beeps in milliseconds
 
-
+const unsigned long AltitudePrintDuration = 250;
 unsigned long previousKalmanMillis = 0; // Store the last time a beep was generated
 unsigned long previousIdleMillis = 0;
 bool beepOn = false; // Flag to track if a beep should be generated
@@ -76,9 +75,10 @@ void Buzz_NumOnes(int num);
 void Buzz_NumHundreds(int num);
 void Buzz_NumTens(int num);
 void Buzz_NumThousands(int num);
+void buzzer_idle();
 
 
-void Buzz_Setup_Pass();
+void Setup_Pass();
 void Buzz_User_Enter();
 void StateMachine();
 float RAW_ALTITUDE();
@@ -101,26 +101,16 @@ void setup()
  //hardware serial print to native
 
 
-
   General_Init();
   baromSetup();
   Servo_Init();
-  delay(2000);
-  Serial.println("Init complete");
-  
-  Buzz_Setup_Pass();
+  Setup_Pass();
 
-  //  EEPROM.write(0, 187);
-  //  EEPROM.write(1, 47);
-  //  EEPROM.write(2, 5);
+
   // for(int i = 0; i< EEPROM.length(); i++){
   //   EEPROM.write(i, 255);
   //   delay(25);
   // }
-  // EEPROM.write(0, 250);
-  //   EEPROM.write(1, 45);
-  // EEPROM.write(2, 6);
-
   CurrentAddress = EEPROM_Init();
   Serial.print("There are ");
   Serial.print(CurrentAddress);
@@ -142,6 +132,7 @@ void loop()
 
 void General_Init()
 {
+    delay(3000);
 
   // Start UART comms
   Serial.begin(9600);
@@ -198,9 +189,12 @@ void baromSetup()
                   Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+                  Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
   groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
+  Serial.print("Ground level air pressure: ");
+  Serial.print(groundPressure);
+  Serial.println(" hPa");
 }
 
 //Call eeprom.length it returns whatever length it is
@@ -211,21 +205,13 @@ int EEPROM_Init()
   {
     // this performs as EEPROM.write(i, i)
     int val = EEPROM.read(i);
-    //Serial.print("I am printing val:   ");
-    Serial.println(val);
     delay(10);
     if (val == 255){
       return i;
       break;
     }
   }
-  //return 0;
-   // {
-   //   return i;
-   //   Serial.print("reading");
     }
-  
- // return 0;
 
 //DetectApogee instead of PrintApogee
 //Use the kalman filter to filter the alitutde to the apogee readings then save that one apogee reading to the EEPROM address read and write it 
@@ -241,9 +227,7 @@ int APOGEE_DETECTION(byte lastAltitude)
       byte Filtered_altitude = KALMAN_ALTITUDE();
       //bool apogeeReached = false;
 
-
-      Filtered_altitude = 200;
-      Serial.print("lastltitude:   ");
+      Serial.print("lastAltitude:   ");
       Serial.println(lastAltitude);
 
 
@@ -251,15 +235,13 @@ int APOGEE_DETECTION(byte lastAltitude)
       if (Filtered_altitude < lastAltitude)
         {
             Serial.println("APOGEE");
-            //apogeeReached = true;
             ApogeeAltitude = Filtered_altitude;
             return 1;
         }
        
         else
-       // lastAltitude = Filtered_altitude;
-       
-        Serial.println(Filtered_altitude);
+        //lastAltitude = Filtered_altitude;
+        //Serial.println(Filtered_altitude);
         return 0;
 
 }
@@ -268,7 +250,7 @@ int APOGEE_DETECTION(byte lastAltitude)
   //alter EEPROM.READ function
   void PRINT_APOGEE(int CurrentAddress)
   {
-    Serial.print("current address:   ");
+    Serial.print("Writing APOGEE to address:   ");
     Serial.println(CurrentAddress);
     Serial.print("ApogeeAltitude:   ");
     Serial.println(ApogeeAltitude);
@@ -276,10 +258,9 @@ int APOGEE_DETECTION(byte lastAltitude)
     EEPROM.write(CurrentAddress,ApogeeAltitude);
     delay(50);
     
-    Serial.println("eeprom passed");
+   
     byte rawAlt = RAW_ALTITUDE();
     EEPROM.write(CurrentAddress+1, rawAlt);
-    Serial.println("eeprom passed 2");
   }
 
   void PRINT_APOGEE_INT(int CurrentAddress)
@@ -289,32 +270,12 @@ int APOGEE_DETECTION(byte lastAltitude)
 
   
 
-// void buzzer_idle() {
-//       if (beepStartTime == 0) {
-//     // Start the beep
-//     tone(BUZZER_PIN, 1000);
-//     beepStartTime = millis();
-//       }
-  
-//   // Check if the beep duration has passed
-//   if (millis() - beepStartTime >= beepDuration) {
-//     noTone(BUZZER_PIN);  // Stop the beep
-//     //beepStartTime = 0;  // Reset the beep start time
-//   }
-//   }
+
 
 //Still need to incorporate millis e.g. beep every 5seconds 
+
+
 void buzzer_idle(){
-  // Beep the buzzer
-  tone(BUZZER_PIN, 4000); // 1000 Hz frequency
-  delay(100); // Beep duration in milliseconds
-  noTone(BUZZER_PIN); // Turn off the buzzer
-
-  // Wait for 10 seconds
-  delay(10000);
-}
-
-void buzzer_idle_test(){
   unsigned long currentMillis = millis(); // Get the current time
 
   // Check if it's time to generate a beep
@@ -344,15 +305,8 @@ void buzzer_idle_test(){
 
 
 void buzzer_touchdown(){
-  // if (millis() - beepStartTime >= beepInterval) {
-  //   // Start a new beep
-  //   tone(BUZZER_PIN, 4000);
-  //   beepStartTime = millis(); //Keep beeping until the rocket is retrieved
-  // }
-
   tone(BUZZER_PIN, 4000, 1000);
   delay(10000);
-
 }
  
 void StateMachine()
@@ -371,11 +325,10 @@ void StateMachine()
     Serial.println("I will now set the Release altitude");
     Buzz_User_Enter();
     ReleaseAltitude = Altitude_Select();
-    ReleaseAltitude = 1000;
     Serial.print("The release altitude has been set to: ");
     Serial.print(ReleaseAltitude);
     Serial.println(" metres");
-    Serial.println(groundPressure);
+    
 
 
     state = IDLE;
@@ -384,9 +337,9 @@ void StateMachine()
   case IDLE:
   
     // while altitude is less than logging threshold, do nothing
-    while (KALMAN_ALTITUDE() < ARMING_ALTITUDE)
+    while (KALMAN_ALTITUDE() < LAUNCH_DETECT_ALTITUDE)
     {
-      buzzer_idle_test();
+      buzzer_idle();
       
       //Serial.println("Servo is now locked in place");
     };
@@ -400,15 +353,14 @@ void StateMachine()
   // insert condition for changing state from 
   case ASCENDING:
   Serial.println("ASCENDING");
-  byte lastAltitude = KALMAN_ALTITUDE();
-  Serial.println("crash 1");
-  lastAltitude = 250;
-  while (KALMAN_ALTITUDE() > ASCENDING_ALTITUDE)
+  
+  while (KALMAN_ALTITUDE() > ARMING_ALTITUDE)
   {
-    Serial.println("test while loop");
-    delay(50);
-    Serial.println("test while loop");
-        delay(50);
+    //Serial.println("test while loop");
+    //delay(50);
+   // Serial.println("test while loop");
+        //delay(50);
+      byte lastAltitude = KALMAN_ALTITUDE();
     if(APOGEE_DETECTION(lastAltitude) == 1){
       state = APOGEE;
       break;
@@ -416,19 +368,6 @@ void StateMachine()
 
 
   };
-
-  //  while (5 > 1)
-  // {
-  //   Serial.println("test while loop");
-  //   delay(50);
-  //   Serial.println("test while loop");
-  //       delay(50);
-  //  // APOGEE_DETECTION(lastAltitude);
-
-
-  // };
-
-
   //Save to EEPROM
 
   case APOGEE:
@@ -436,18 +375,19 @@ void StateMachine()
     PRINT_APOGEE(CurrentAddress);
     Serial.println("I am at apogee");
     state = DESCENDING;
-    Serial.println("I am at apogee 2");
+    
     //break;
   }
   case DESCENDING:
   {
   Serial.println("entering descent");
-  Serial.println("entering descent");
-  while (KALMAN_ALTITUDE() < ReleaseAltitude)
+  while (1)
   {
+    if(KALMAN_ALTITUDE() < ReleaseAltitude){
     Serial.println("Release parachute");
     state = RELEASE;
-     break;
+    break;
+    }
   }
    
   }
@@ -460,20 +400,25 @@ void StateMachine()
 
 
   case FINALDESCENT:
-  while(KALMAN_ALTITUDE() < TOUCHDOWN_ALTITUDE)
+  while(1){
+  if(KALMAN_ALTITUDE() < TOUCHDOWN_ALTITUDE)
   {
     Serial.println("enter touchdown");
     state = TOUCHDOWN;
     break;
   }
+  }
+
   case TOUCHDOWN:
   {
     while(1){
-    Serial.println("inshallah");
+    Serial.println("Touchdown");
     //perform some sort of idle buzzer 
     //buzzer_touchdown();
     Serial.print("Apogee altitude:   ");
     Serial.println(ApogeeAltitude*2);
+    Buzz_NumThousands(ApogeeAltitude*2);
+    delay(2000);
     Buzz_NumHundreds(ApogeeAltitude*2);
     delay(2000);
     Buzz_NumTens(ApogeeAltitude*2);
@@ -587,7 +532,7 @@ void readFlights(){
     Buzz_NumTens(EEPROM.read(i)*2);
     delay(2000);
     Buzz_NumOnes(EEPROM.read(i)*2);
-  
+  delay(2000);
   tone(BUZZER_PIN, 1250,500);
   delay(500);
   tone(BUZZER_PIN, 1000,500);
@@ -605,8 +550,6 @@ int Altitude_Select()
   unsigned long timeout = 0;
 
   unsigned long entertime = millis();
-  // Serial.println("test 1");
-
   while (timeout < 5000)
   {
     timeout = millis() - entertime;
@@ -636,31 +579,33 @@ float RAW_ALTITUDE()
 {
   /**Adjust pressure at sealevel for where you are*/ /*write a function to acquire that number*/
   float altitude = bmp.readAltitude(groundPressure);
-  //Serial.println(altitude);
+
   return altitude/2;
 }
 
 float KALMAN_ALTITUDE()
 {
-  //unsigned long currentMillis = millis();  // Get the current time
-
-  // Check if the specified interval has elapsed
-  //if (currentMillis - previousKalmanMillis >= KalmanInterval) {
-   // Save the current time as the last checked time
-   // previousKalmanMillis = currentMillis;
-    //Serial.println("kalman");
-
   //implement a timer for this
   float estimated_altitude = pressureKalmanFilter.updateEstimate(RAW_ALTITUDE());
 
-  estimated_altitude = 100.00;
-
+  float currentMillis = millis();
+    if (currentMillis - previousKalmanMillis < AltitudePrintDuration) {
+       // Turn the buzzer on
+       // do nothing
+    } 
+    else {
+      Serial.print("Kalman Altitude: ");
+      Serial.print(estimated_altitude);
+      Serial.println(" m");
+      previousKalmanMillis = currentMillis;
+    }
  return estimated_altitude;
 
 }
  
 
-void Buzz_Setup_Pass(){
+void Setup_Pass(){
+  Serial.println("Init complete");
   tone(BUZZER_PIN, 750,500);
   delay(500);
   tone(BUZZER_PIN, 1000,500);
