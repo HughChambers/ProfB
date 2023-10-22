@@ -7,15 +7,15 @@
 
 
 #define buffer 16
-#define SERVO_PIN 5
+#define SERVO_PIN 18
 #define BUZZER_PIN 1
 //#define BUZZER_PIN A1
 #define BUTTON 6
 #define LAUNCH_DETECT_ALTITUDE 30/2 // halve because of altitude halve
 #define ARMING_ALTITUDE 25/2 // halve because of altitude halve
 #define TOUCHDOWN_ALTITUDE 50/2
-#define ANGLE_OPEN 0 //Servo min angle
-#define ANGLE_CLOSED 180 //Servo max angle
+#define ANGLE_OPEN 130 //Servo min angle
+#define ANGLE_CLOSED 72 //Servo max angle
 #define IdleInterval 5000
 #define KalmanInterval 100
 #define beepduration 300
@@ -146,6 +146,8 @@ void Servo_Init()
 {
   ReleaseServo.attach(SERVO_PIN);
   ReleaseServo.write(ANGLE_OPEN);
+  delay(10000);
+  ReleaseServo.write(ANGLE_CLOSED);
 }
 
 void Servo_Idle()
@@ -189,7 +191,7 @@ void baromSetup()
                   Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
+                  Adafruit_BMP280::STANDBY_MS_250); /* Standby time. */
 
   groundPressure = bmp.readPressure() / 100; // /100 converts Pa to hPa
   Serial.print("Ground level air pressure: ");
@@ -235,7 +237,7 @@ int APOGEE_DETECTION(byte lastAltitude)
       if (Filtered_altitude < lastAltitude)
         {
             Serial.println("APOGEE");
-            ApogeeAltitude = Filtered_altitude;
+            ApogeeAltitude = lastAltitude;
             return 1;
         }
        
